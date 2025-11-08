@@ -101,7 +101,7 @@ Here are **real-world examples of quorum usage** in distributed systems:
 
 ---
 
-### ✅ **1. Cassandra (NoSQL Database)**
+###  **1. Cassandra (NoSQL Database)**
 - Cassandra uses **tunable consistency** with quorum reads and writes.
 - **Quorum formula:**  
   `QUORUM = floor(replication_factor / 2) + 1 (Cassandra uses integer division).`
@@ -114,7 +114,7 @@ Here are **real-world examples of quorum usage** in distributed systems:
 
 ---
 
-### ✅ **2. DynamoDB (AWS)**
+###  **2. DynamoDB (AWS)**
 - DynamoDB uses a similar quorum-based approach for **eventual consistency** and **strong consistency**.
 - For strong consistency:
   - Read quorum ensures at least one node has the latest write.
@@ -122,7 +122,7 @@ Here are **real-world examples of quorum usage** in distributed systems:
 
 ---
 
-### ✅ **3. ZooKeeper**
+###  **3. ZooKeeper**
 - ZooKeeper uses **quorum-based consensus** for leader election and write operations.
 - Requires a majority of nodes (quorum) to agree before committing a change.
 - Example:
@@ -132,14 +132,14 @@ Here are **real-world examples of quorum usage** in distributed systems:
 
 ---
 
-### ✅ **4. MongoDB**
+###  **4. MongoDB**
 - MongoDB replica sets use **write concern** and **read concern**:
   - `majority` write concern = quorum of nodes acknowledge the write.
   - Ensures durability and consistency across replicas.
 
 ---
 
-### ✅ **5. Raft & Paxos Consensus Protocols**
+###  **5. Raft & Paxos Consensus Protocols**
 - Both protocols rely on **quorum voting**:
   - A majority of nodes must agree on a log entry before it is committed.
 - Guarantees **linearizability** and prevents split-brain scenarios.
