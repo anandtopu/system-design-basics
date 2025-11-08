@@ -144,4 +144,5 @@ Here are **real-world examples of quorum usage** in distributed systems:
   - A majority of nodes must agree on a log entry before it is committed.
 - Guarantees **linearizability** and prevents split-brain scenarios.
 
+
 ---
