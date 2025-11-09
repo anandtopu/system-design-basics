@@ -164,16 +164,7 @@ Your manual sharding system acts as a middleware layer—a central orchestrator 
   - Routes operations to the right machines (via gRPC or direct connections).
   - Logs metrics like shard balance, migration status, and replication delays.
 
-Here's a simple flow diagram in text form (visualize it as a sequence):
-```
-[Client: Store/Retrieve] --> [Orchestrator]
-Orchestrator:
-  - Hash(key) --> Shard Assignment (via Hash Ring)
-  - On AddMachine: Recompute + Migrate ~1/N of Keys Asynchronously
-  - On Failure: Promote Replica + Reassign + Rebuild Copies
-[Orchestrator] --> [Shard Machines: Primary + Replicas (3x)]
-```
-
+Here's a simple flow diagram (now in Mermaid for rendering):
 
    ```mermaid
    flowchart LR
@@ -187,20 +178,7 @@ Orchestrator:
        Orchestrator --> ORCH
        ORCH --> Shards["Shard Machines:<br/>Primary + Replicas (3x)"]
    ```
-```
-flowchart LR
-  Client[Client: Store\/Retrieve] --> Orchestrator[Orchestrator]
-  subgraph ORCH [Orchestrator Details]
-    direction TB
-    H[Hash(key) --> Shard Assignment<br>(via Hash Ring)]
-    AM[On AddMachine:<br>Recompute + Migrate ~1\/N of Keys<br>Asynchronously]
-    F[On Failure:<br>Promote Replica + Reassign +<br>Rebuild Copies]
-  end
-  Orchestrator --> ORCH
-  ORCH --> Shards[Shard Machines:<br>Primary + Replicas (3x)]
 
-
-```
 
 
 This design supports endless growth—add nodes as traffic rises—but watch for spikes during migrations. Facebook's setup, with millions of partitions, shows how it can handle global-scale loads reliably.
