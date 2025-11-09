@@ -8,22 +8,24 @@ Before diving in, a quick reality check: In the current era of hyperscale, data 
 
 ## SQL Databases: The Pillars of Structure and Reliability
 
-SQL databases model the world as interconnected tables, where rows represent entities and foreign keys forge relationships. Querying is declarative: Write what you want (e.g., `SELECT * FROM users JOIN orders`), and the engine optimizes how. This relational model, born in the 1970s, remains the backbone for a majority of enterprise apps.
+SQL databases model the world as interconnected tables, where rows represent entities and foreign keys forge relationships. Querying is declarative: Write what you want (e.g., `SELECT * FROM users JOIN orders`), and the engine optimizes how. This relational model, born in the 1970s, remains the backbone for enterprise apps.
 
 ### Core Features: Normalization, ACID, and Schema Rigidity
 
 - **Normalization**: Eliminate redundancy to boost integrity. In a naive e-commerce setup, duplicating user details across orders leads to update anomalies (change one, miss others). Normalize into Users and Orders tables: One source of truth. Example schema:
   ```sql
+  -- Create Users table with primary key for unique identification
   CREATE TABLE Users (
-      user_id INT PRIMARY KEY,
-      username VARCHAR(50) UNIQUE,
-      email VARCHAR(100)
+      user_id INT PRIMARY KEY,  -- Unique integer ID for each user
+      username VARCHAR(50) UNIQUE,  -- Unique string for username, max 50 chars
+      email VARCHAR(100)  -- Email field, max 100 chars
   );
 
+  -- Create Orders table linking to Users via foreign key
   CREATE TABLE Orders (
-      order_id INT PRIMARY KEY,
-      user_id INT FOREIGN KEY REFERENCES Users(user_id),
-      total DECIMAL(10,2)
+      order_id INT PRIMARY KEY,  -- Unique integer ID for each order
+      user_id INT FOREIGN KEY REFERENCES Users(user_id),  -- Links order to user
+      total DECIMAL(10,2)  -- Total amount with 10 digits, 2 decimal places
   );
   ```
   Pros: Saves space, ensures consistency. Cons: JOIN-heavy queries can drag on massive datasets.
@@ -42,15 +44,23 @@ SQL databases model the world as interconnected tables, where rows represent ent
 
   With SQL (e.g., PostgreSQL):
   ```sql
+  -- Start a transaction with serializable isolation to prevent race conditions
   BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
-  SELECT balance FROM accounts WHERE user_id = ? FOR UPDATE;  -- Lock row
+  
+  -- Lock the row to check balance and prevent concurrent modifications
+  SELECT balance FROM accounts WHERE user_id = ? FOR UPDATE;
+  
+  -- Conditional update if sufficient funds
   IF balance >= 1000 THEN
+      -- Deduct the amount
       UPDATE accounts SET balance = balance - 1000 WHERE user_id = ?;
-      -- Log/notify dispense
+      -- Log or notify for cash dispense
   END IF;
-  COMMIT;  -- All or nothing
+  
+  -- Commit if successful, or rollback on failure (all or nothing)
+  COMMIT;
   ```
-  Isolation prevents the race; atomicity ensures no ghosts in the machine. This powers fintech like Paytm, where a single glitch could cost millions.
+  Isolation prevents the race; atomicity ensures no ghosts in the machine. This powers banking transactions, where a single glitch could cost millions.
 
 - **Defined Schema**: Predictable columns (e.g., UserID: INT 4 bytes, Timestamp: DATETIME 8 bytes) make storage efficient—max row ~32 bytes in simple tables. Great for auditing, but...
 
@@ -90,17 +100,22 @@ Sharding distributes load: Hash key → Machine. Denormalize to localize data (e
 
 **Pseudocode for Sharding Logic** (e.g., in Go/Rust backend):
 ```go
+// Function to compute shard for a given key using FNV hash
 func getShard(key string) int {
-    hash := fnv.New32a()
-    hash.Write([]byte(key))
-    return int(hash.Sum32() % numShards)
+    hash := fnv.New32a()  // Initialize FNV-1a 32-bit hash
+    hash.Write([]byte(key))  // Hash the key bytes
+    return int(hash.Sum32() % numShards)  // Modulo by total shards for index
 }
 
+// Function to write a message, denormalizing across sender and receiver shards
 func writeMessage(sender, receiver, msg string) {
-    senderShard := getShard(sender)
-    receiverShard := getShard(receiver)
-    // Denormalize: Write to both
+    senderShard := getShard(sender)  // Get shard for sender
+    receiverShard := getShard(receiver)  // Get shard for receiver
+    
+    // Denormalize: Append to sender's sent messages
     shards[senderShard].AppendToSent(sender, msg)
+    
+    // Denormalize: Append to receiver's inbox
     shards[receiverShard].AppendToInbox(receiver, msg)
 }
 ```
@@ -159,6 +174,18 @@ Orchestrator:
 [Orchestrator] --> [Shard Machines: Primary + Replicas (3x)]
 ```
 
+flowchart LR
+  Client[Client:\ Store\/Retrieve] --> Orchestrator[Orchestrator]
+  subgraph ORCH [Orchestrator Details]
+    direction TB
+    H[Hash(key) --> Shard Assignment\n(via Hash Ring)]
+    AM[On AddMachine:\nRecompute + Migrate \~1\/N of Keys\nAsynchronously]
+    F[On Failure:\nPromote Replica + Reassign +\nRebuild Copies]
+  end
+  Orchestrator --> ORCH
+  ORCH --> Shards[Shard Machines:\nPrimary + Replicas (3x)]
+
+
 This design supports endless growth—add nodes as traffic rises—but watch for spikes during migrations. Facebook's setup, with millions of partitions, shows how it can handle global-scale loads reliably.
 
 ### Consistent Hashing: The Ring That Keeps Data Balanced
@@ -172,17 +199,17 @@ This approach avoids overwhelming your system during growth. For instance, expan
 
 Here's a basic implementation using Python's `hash_ring` library:
 ```python
-from hash_ring import HashRing
+from hash_ring import HashRing  # Library for consistent hashing ring
 
 class ShardingRing:
-    def __init__(self, nodes=None, replicas=100):  # Virtual nodes per machine
-        self.ring = HashRing(nodes or [], int(replicas))
+    def __init__(self, nodes=None, replicas=100):  # replicas = virtual nodes per physical node for load balancing
+        self.ring = HashRing(nodes or [], int(replicas))  # Initialize ring with nodes and virtual replicas
     
-    def get_shard(self, key):
-        return self.ring.get_node(str(key))  # Node for this key
+    def get_shard(self, key):  # Retrieve the shard (node) for a given key
+        return self.ring.get_node(str(key))  # Hash key and find clockwise successor node
     
-    def add_node(self, node_id):
-        self.ring.add_node(node_id)
+    def add_node(self, node_id):  # Add a new node to the ring
+        self.ring.add_node(node_id)  # Rebalance ring; triggers migration for affected keys
         # Kick off migration for affected keys (from logs or snapshots)
 ```
 
@@ -227,18 +254,18 @@ In setups like Facebook's master-slave chains, detection via log delays allows p
 
 Sample failure handler in Python:
 ```python
-def handle_failure(node_id, shard_id):
-    if is_primary(node_id, shard_id):
-        new_primary = select_replica(shard_id, min_lag=True)
+def handle_failure(node_id, shard_id):  # Main function to handle node failure
+    if is_primary(node_id, shard_id):  # Check if failed node is the primary
+        new_primary = select_replica(shard_id, min_lag=True)  # Pick replica with least lag
         promote(new_primary)  # Switch roles, refresh ring
-        ring.remove_node(node_id)
+        ring.remove_node(node_id)  # Remove failed node from ring
     
-    # Rebuild copies
-    new_replica = provision_node()
-    snapshot_and_replay(old_primary, new_replica)
-    add_to_replicas(shard_id, new_replica)
+    # Rebuild copies to restore replication level
+    new_replica = provision_node()  # Spin up new replica node
+    snapshot_and_replay(old_primary, new_replica)  # Copy snapshot and replay logs
+    add_to_replicas(shard_id, new_replica)  # Add to shard's replica list
     
-    # Log and measure
+    # Log and measure recovery time
     log_failure(node_id, "Restored in {}s".format(time_taken()))
 ```
 
@@ -256,12 +283,12 @@ NoSQL's eventual consistency works well for many apps but falls short for strict
 
 Example:
 ```python
-def distributed_write(keys, ops):
-    with coordinator.lock(keys):  # Lock multiple keys
-        for key, op in zip(keys, ops):
-            shard = get_shard(key)
-            shard.execute(op)  # Two-phase prep
-    coordinator.commit()  # Signal all
+def distributed_write(keys, ops):  # Perform atomic write across multiple shards
+    with coordinator.lock(keys):  # Acquire distributed lock on all keys (e.g., Redlock)
+        for key, op in zip(keys, ops):  # Loop through keys and operations
+            shard = get_shard(key)  # Determine shard for each key
+            shard.execute(op)  # Two-phase prep: Prepare on shard
+    coordinator.commit()  # Signal all shards to commit (second phase)
 ```
 
 As seen in Facebook's sharded MySQL, this delivers atomicity and isolation without full native support. It's powerful for critical flows, though it trades a bit of speed.
@@ -276,7 +303,7 @@ Manual sharding takes practice, but it's a valuable skill for building robust sy
 
 ## Emerging Trends: Polyglot, AI, and Beyond
 
-- **Polyglot Persistence**: Many orgs mix models—SQL for txns, NoSQL for feeds.
+- **Polyglot Persistence**: Organizations mix models—SQL for txns, NoSQL for feeds.
 - **AI Integration**: Auto-indexing (e.g., MongoDB Atlas Search) and query gen.
 - **Cloud/Open Source Boom**: Yugabyte (distributed SQL), Scylla (Cassandra-compatible) lead.
 - **Learn Both**: SQL foundational; NoSQL for niches like real-time.
