@@ -174,7 +174,8 @@ Orchestrator:
 [Orchestrator] --> [Shard Machines: Primary + Replicas (3x)]
 ```
 
-```flowchart LR
+``` mermaid
+flowchart LR
   Client[Client:\ Store\/Retrieve] --> Orchestrator[Orchestrator]
   subgraph ORCH [Orchestrator Details]
     direction TB
