@@ -175,17 +175,18 @@ Orchestrator:
 ```
 
 
-flowchart LR
-    Client["Client: Store/Retrieve"] --> Orchestrator["Orchestrator"]
-    subgraph ORCH["Orchestrator Details"]
-        direction TB
-        H["Hash(key) --> Shard Assignment<br/>(via Hash Ring)"]
-        AM["On AddMachine:<br/>Recompute + Migrate ~1/N of Keys<br/>Asynchronously"]
-        F["On Failure:<br/>Promote Replica + Reassign +<br/>Rebuild Copies"]
-    end
-    Orchestrator --> ORCH
-    ORCH --> Shards["Shard Machines:<br/>Primary + Replicas (3x)"]
-
+   ```mermaid
+   flowchart LR
+       Client["Client: Store/Retrieve"] --> Orchestrator["Orchestrator"]
+       subgraph ORCH["Orchestrator Details"]
+           direction TB
+           H["Hash(key) --> Shard Assignment<br/>(via Hash Ring)"]
+           AM["On AddMachine:<br/>Recompute + Migrate ~1/N of Keys<br/>Asynchronously"]
+           F["On Failure:<br/>Promote Replica + Reassign +<br/>Rebuild Copies"]
+       end
+       Orchestrator --> ORCH
+       ORCH --> Shards["Shard Machines:<br/>Primary + Replicas (3x)"]
+   ```
 ```
 flowchart LR
   Client[Client: Store\/Retrieve] --> Orchestrator[Orchestrator]
