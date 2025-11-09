@@ -174,7 +174,7 @@ Orchestrator:
 [Orchestrator] --> [Shard Machines: Primary + Replicas (3x)]
 ```
 
-flowchart LR
+```flowchart LR
   Client[Client:\ Store\/Retrieve] --> Orchestrator[Orchestrator]
   subgraph ORCH [Orchestrator Details]
     direction TB
@@ -184,6 +184,7 @@ flowchart LR
   end
   Orchestrator --> ORCH
   ORCH --> Shards[Shard Machines:\nPrimary + Replicas (3x)]
+```
 
 
 This design supports endless growth—add nodes as traffic rises—but watch for spikes during migrations. Facebook's setup, with millions of partitions, shows how it can handle global-scale loads reliably.
