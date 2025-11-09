@@ -174,18 +174,14 @@ Orchestrator:
 [Orchestrator] --> [Shard Machines: Primary + Replicas (3x)]
 ```
 
-``` mermaid
-flowchart LR
-  Client[Client:\ Store\/Retrieve] --> Orchestrator[Orchestrator]
-  subgraph ORCH [Orchestrator Details]
-    direction TB
-    H[Hash(key) --> Shard Assignment\n(via Hash Ring)]
-    AM[On AddMachine:\nRecompute + Migrate \~1\/N of Keys\nAsynchronously]
-    F[On Failure:\nPromote Replica + Reassign +\nRebuild Copies]
-  end
-  Orchestrator --> ORCH
-  ORCH --> Shards[Shard Machines:\nPrimary + Replicas (3x)]
+```mermaid
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
 ```
+
 
 
 This design supports endless growth—add nodes as traffic rises—but watch for spikes during migrations. Facebook's setup, with millions of partitions, shows how it can handle global-scale loads reliably.
